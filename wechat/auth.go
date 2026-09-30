@@ -289,3 +289,31 @@ func (a *Auth) pollUntilComplete(ctx context.Context, qrcode string) (*QRCodeSta
 		}
 	}
 }
+
+// HasValidateCredentials judge credentials is validate.
+func (a *Auth) HasValidateCredentials() bool {
+	creds, err := a.store.Load()
+	if err != nil {
+		a.logger.Warn("failed to load credentials", "error", err)
+		return false
+	}
+	if creds == nil || creds.BotToken == "" {
+		return false
+	}
+
+	a.client.SetToken(creds.BotToken)
+	if creds.BaseURL != "" {
+		a.client.SetBaseURL(creds.BaseURL)
+	}
+
+	valid, validationErr := a.ValidateCredentials(context.Background())
+	if validationErr != nil {
+		a.logger.Warn("credential validation error", "error", validationErr)
+		return false
+	}
+
+	if err := a.store.Save(creds); err != nil {
+		a.logger.Warn("failed to save credentials", "error", err)
+	}
+	return valid
+}
